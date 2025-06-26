@@ -17,15 +17,15 @@ def apply_dilation(pixel_matrix, kernel_size=3):
     offset = kernel_size // 2
     for y in range(height):
         for x in range(width):
-            max_val = 0
+            min_val = 255
             for i in range(-offset, offset + 1):
                 for j in range(-offset, offset + 1):
                     ny, nx = y + i, x + j
                     if 0 <= ny < height and 0 <= nx < width:
                         pixel_value = pixel_matrix[ny][nx]
-                        if pixel_value > max_val:
-                            max_val = pixel_value
-            output_matrix[y][x] = max_val
+                        if pixel_value < min_val:
+                            min_val = pixel_value
+            output_matrix[y][x] = min_val
     return output_matrix
 
 def apply_erosion(pixel_matrix, kernel_size=3):
@@ -43,15 +43,15 @@ def apply_erosion(pixel_matrix, kernel_size=3):
     offset = kernel_size // 2
     for y in range(height):
         for x in range(width):
-            min_val = 255
+            max_val = 0
             for i in range(-offset, offset + 1):
                 for j in range(-offset, offset + 1):
                     ny, nx = y + i, x + j
                     if 0 <= ny < height and 0 <= nx < width:
                         pixel_value = pixel_matrix[ny][nx]
-                        if pixel_value < min_val:
-                            min_val = pixel_value
-            output_matrix[y][x] = min_val
+                        if pixel_value > max_val:
+                            max_val = pixel_value
+            output_matrix[y][x] = max_val
     return output_matrix
 
 def apply_opening(pixel_matrix, kernel_size=3):
