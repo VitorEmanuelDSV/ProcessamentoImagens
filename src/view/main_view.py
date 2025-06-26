@@ -354,6 +354,17 @@ class MainView(tk.Tk):
         elif operation_name == "XOR":
             result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
 
+        # Morfismo
+        elif operation_name == "Iniciar Morfismo":
+            valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, initialvalue=0.5)
+            if valor_t is not None:
+                if 0 <= valor_t <= 1:
+                    result_matrix = morphism.aplicar_morfismo(self.image_data_1[0], self.image_data_2[0], valor_t)
+                else:
+                    messagebox.showerror("Erro", "O valor de t deve estar entre 0 e 1.", parent=self)
+
+
+
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
             self.canvas_result.image_data = self.result_image_data
