@@ -1,5 +1,11 @@
 # src/view/main_view.py
 
+import numpy as np
+from PIL import Image, ImageTk
+import imageio
+import numpy as np
+import os
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
@@ -409,12 +415,7 @@ class MainView(tk.Tk):
         elif operation_name == "XOR":
              if self.image_data_2: result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Iniciar Morfismo":
-            valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, minvalue=0.0, maxvalue=1.0)
-            if valor_t is not None:
-                if self.image_data_2:
-                    result_matrix = morphism.aplicar_morfismo(self.image_data_1[0], self.image_data_2[0], valor_t)
-                else:
-                    messagebox.showwarning("Aviso", "A operação de Morfismo requer a 'Imagem 2'.", parent=self)
+            self.iniciar_morfismo_com_linhas()
 
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
@@ -441,3 +442,92 @@ class MainView(tk.Tk):
         except (ValueError, TypeError):
             messagebox.showerror("Erro de Entrada", "Por favor, insira valores inteiros válidos.", parent=self)
             return None
+
+    def iniciar_morfismo_com_linhas(self):
+        from src.algorithms.morphism import morph
+        import threading
+        import numpy as np
+        import imageio
+
+        if self.image_data_1 is None or self.image_data_2 is None:
+            messagebox.showerror("Erro", "Carregue as duas imagens primeiro.")
+            return
+
+        print("[INFO] Imagens carregadas. Iniciando morfismo...")
+
+        img1 = np.array(self.image_data_1[0], dtype=np.uint8)
+        img2 = np.array(self.image_data_2[0], dtype=np.uint8)
+
+        if img1.shape != img2.shape:
+            messagebox.showerror("Erro", "As imagens devem ter o mesmo tamanho.")
+            return
+
+        altura, largura = img1.shape
+
+        pontos1 = np.array([
+            [0, 0], [largura - 1, 0],
+            [0, altura - 1], [largura - 1, altura - 1],
+
+            [largura//4 - 5, altura//3], [largura//4 + 5, altura//3],
+            [3*largura//4 - 5, altura//3], [3*largura//4 + 5, altura//3],
+            [largura//3, 2*altura//3], [2*largura//3, 2*altura//3]
+        ])
+
+        pontos2 = np.array([
+            [0, 0], [largura - 1, 0],
+            [0, altura - 1], [largura - 1, altura - 1],
+
+            [largura//4 - 10, altura//3 - 5], [largura//4 + 10, altura//3 - 5],
+            [3*largura//4 - 10, altura//3 + 5], [3*largura//4 + 10, altura//3 + 5],
+            [largura//3 - 10, 2*altura//3 + 5], [2*largura//3 + 10, 2*altura//3 + 5]
+        ])
+
+        self._frames_morph = []
+        self._gif_path = "resultado_morphing.gif"
+        self._morph_index = 0
+
+        def gerar_frames():
+            total_frames = 10
+            print(f"[INFO] Gerando {total_frames} frames do morphing...")
+            for i in range(total_frames):
+                linear_t = i / (total_frames - 1)
+                t = 3 * linear_t**2 - 2 * linear_t**3
+                frame = morph(img1, img2, pontos1, pontos2, t)
+                self._frames_morph.append(frame)
+                if i % 10 == 0 or i == total_frames - 1:
+                    print(f"[DEBUG] Frame {i+1}/{total_frames} gerado")
+            print("[INFO] Salvando GIF...")
+            imageio.mimsave(self._gif_path, self._frames_morph, fps=30)
+            print(f"[INFO] GIF salvo em {self._gif_path}")
+            self.after(0, self._exibir_gif_morph)
+
+        threading.Thread(target=gerar_frames, daemon=True).start()
+
+    def _exibir_gif_morph(self):
+        try:
+            print("Carregando frames do GIF...")
+            from PIL import Image, ImageTk
+            self._gif_frames = []
+            with Image.open(self._gif_path) as gif:
+                for frame_index in range(gif.n_frames):
+                    gif.seek(frame_index)
+                    frame = gif.copy().convert("L")
+                    self._gif_frames.append(ImageTk.PhotoImage(frame))
+            print(f"Total de frames carregados: {len(self._gif_frames)}")
+            self._gif_index = 0
+            self._animar_gif_result()
+        except Exception as e:
+            messagebox.showerror("Erro ao exibir GIF", str(e))
+            print("Erro ao exibir GIF:", e)
+
+    def _animar_gif_result(self):
+        if not hasattr(self, '_gif_frames') or not self._gif_frames:
+            return
+
+        frame = self._gif_frames[self._gif_index]
+        self.canvas_result.delete("all")
+        self.canvas_result.create_image(0, 0, anchor="nw", image=frame)
+        self.canvas_result.image = frame
+
+        self._gif_index = (self._gif_index + 1) % len(self._gif_frames)
+        self.after(33, self._animar_gif_result)
