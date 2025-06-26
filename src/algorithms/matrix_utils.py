@@ -3,11 +3,10 @@
 def add_matrices(matrix1, matrix2):
     """
     Soma duas matrizes elemento a elemento.
-    É uma aproximação da magnitude do gradiente |G| ≈ |Gx| + |Gy|.
 
     Args:
-        matrix1 (list[list[int]]): A primeira matriz (ex: resultado de Gx).
-        matrix2 (list[list[int]]): A segunda matriz (ex: resultado de Gy).
+        matrix1 (list[list[int]]): A primeira matriz.
+        matrix2 (list[list[int]]): A segunda matriz.
 
     Returns:
         list[list[int]]: A matriz resultante da soma.
@@ -23,13 +22,42 @@ def add_matrices(matrix1, matrix2):
 
     for y in range(height):
         for x in range(width):
-            # Soma os valores absolutos dos pixels de cada matriz
-            sum_val = abs(matrix1[y][x]) + abs(matrix2[y][x])
+            # Soma os valores dos pixels de cada matriz
+            # Na detecção de bordas, os valores absolutos são usados. Para high-boost, a soma direta.
+            # Aqui, implementamos a soma direta, que é mais geral.
+            sum_val = matrix1[y][x] + matrix2[y][x]
             
             # Garante que o valor final esteja no intervalo [0, 255]
             if sum_val > 255:
                 result_matrix[y][x] = 255
+            elif sum_val < 0:
+                result_matrix[y][x] = 0
             else:
                 result_matrix[y][x] = int(sum_val)
                 
+    return result_matrix
+
+def multiply_by_scalar(matrix, scalar):
+    """
+    Multiplica cada elemento de uma matriz por um valor escalar.
+
+    Args:
+        matrix (list[list[int]]): A matriz a ser multiplicada.
+        scalar (float): O fator de multiplicação.
+
+    Returns:
+        list[list[int]]: A matriz resultante.
+    """
+    if not matrix:
+        return None
+
+    height = len(matrix)
+    width = len(matrix[0])
+    
+    result_matrix = [[0 for _ in range(width)] for _ in range(height)]
+
+    for y in range(height):
+        for x in range(width):
+            result_matrix[y][x] = matrix[y][x] * scalar
+            
     return result_matrix

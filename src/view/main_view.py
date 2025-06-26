@@ -1,7 +1,7 @@
 # src/view/main_view.py
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, simpledialog
 
 # Importando os utilitários de imagem
 from src.view.image_utils import read_pgm, draw_image
@@ -221,7 +221,7 @@ class MainView(tk.Tk):
             "Robert's Cruzado": ([[0,0,0],[0,1,0],[0,0,-1]], [[0,0,0],[0,0,1],[0,-1,0]]),
             "Prewitt": ([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]), 
             "Sobel": ([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]),
-            "Hight-boost": ([[-1, -1, -1], [-1, 8.9, -1], [-1, -1, -1]], None),
+            "Hight-boost": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
         }
         
         kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
@@ -242,6 +242,17 @@ class MainView(tk.Tk):
             result_matrix = filters.apply_roberts_filter(pixel_matrix)
         elif operation_name == "Robert's Cruzado":
             result_matrix = filters.apply_roberts_cross_filter(pixel_matrix)
+        elif operation_name == "Prewitt":
+            result_matrix = filters.apply_prewitt_filter(pixel_matrix)
+        elif operation_name == "Sobel":
+            result_matrix = filters.apply_sobel_filter(pixel_matrix)
+        elif operation_name == "Hight-boost":
+            factor_a = simpledialog.askfloat("Fator A", "Insira o valor de A (A > 1):", parent=self)
+            if factor_a is not None:
+                if factor_a > 1:
+                    result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
+                else:
+                    messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
 
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
