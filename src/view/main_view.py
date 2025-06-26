@@ -252,6 +252,12 @@ class MainView(tk.Tk):
         elif operation_name == "Divisão":
             fator = 2
             result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], fator)
+        elif operation_name == "OR":
+            result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "AND":
+            result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "XOR":
+            result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
 
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
