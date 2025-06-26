@@ -348,6 +348,30 @@ class MainView(tk.Tk):
                 r1, s1, r2, s2 = params
                 result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
 
+         # Operações Algébricas
+        elif operation_name == "Soma":
+            result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Subtração":
+            result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Multiplicação":
+            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
+            if factor is not None:
+                result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], factor)
+        elif operation_name == "Divisão":
+            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
+            if factor is not None and factor != 0:
+                result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
+            elif factor == 0:
+                messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
+
+        # Operações Lógicas
+        elif operation_name == "OR":
+            result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "AND":
+            result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "XOR":
+            result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
+
         # Morfismo
         elif operation_name == "Iniciar Morfismo":
             valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, initialvalue=0.5)
@@ -356,8 +380,6 @@ class MainView(tk.Tk):
                     result_matrix = morphism.aplicar_morfismo(self.image_data_1[0], self.image_data_2[0], valor_t)
                 else:
                     messagebox.showerror("Erro", "O valor de t deve estar entre 0 e 1.", parent=self)
-
-
 
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
