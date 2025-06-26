@@ -6,80 +6,52 @@ def apply_dilation(pixel_matrix, kernel_size=3):
     """
     Aplica a operação de dilatação em uma imagem em escala de cinza.
     A dilatação substitui o valor de um pixel pelo valor MÁXIMO
-    na sua vizinhança, definida pelo elemento estruturante (kernel).
-
-    Args:
-        pixel_matrix (list[list[int]]): A matriz 2D da imagem.
-        kernel_size (int): O tamanho do elemento Estruturante (deve ser ímpar, ex: 3, 5).
-
-    Returns:
-        list[list[int]]: A nova matriz de pixels após a dilatação.
+    na sua vizinhança, definida pelo elemento estruturante.
+    Expande as regiões claras.
     """
     if not pixel_matrix:
         return None
-
     height = len(pixel_matrix)
     width = len(pixel_matrix[0])
-    
     output_matrix = [[0 for _ in range(width)] for _ in range(height)]
-    
     offset = kernel_size // 2
-
     for y in range(height):
         for x in range(width):
-            
-            max_val = 0
+            min_val = 255
             for i in range(-offset, offset + 1):
                 for j in range(-offset, offset + 1):
                     ny, nx = y + i, x + j
-                    
                     if 0 <= ny < height and 0 <= nx < width:
                         pixel_value = pixel_matrix[ny][nx]
-                        if pixel_value > max_val:
-                            max_val = pixel_value
-            
-            output_matrix[y][x] = max_val
-            
+                        if pixel_value < min_val:
+                            min_val = pixel_value
+            output_matrix[y][x] = min_val
     return output_matrix
 
 def apply_erosion(pixel_matrix, kernel_size=3):
     """
     Aplica a operação de erosão em uma imagem em escala de cinza.
     A erosão substitui o valor de um pixel pelo valor MÍNIMO
-    na sua vizinhança, definida pelo elemento estruturante (kernel).
-
-    Args:
-        pixel_matrix (list[list[int]]): A matriz 2D da imagem.
-        kernel_size (int): O tamanho do elemento Estruturante (deve ser ímpar, ex: 3, 5).
-
-    Returns:
-        list[list[int]]: A nova matriz de pixels após a erosão.
+    na sua vizinhança, definida pelo elemento estruturante.
+    Expande as regiões escuras (encolhe as claras).
     """
     if not pixel_matrix:
         return None
-
     height = len(pixel_matrix)
     width = len(pixel_matrix[0])
-
     output_matrix = [[0 for _ in range(width)] for _ in range(height)]
-    
     offset = kernel_size // 2
-
     for y in range(height):
         for x in range(width):
-            
-            min_val = 255
+            max_val = 0
             for i in range(-offset, offset + 1):
                 for j in range(-offset, offset + 1):
                     ny, nx = y + i, x + j
-                    
                     if 0 <= ny < height and 0 <= nx < width:
                         pixel_value = pixel_matrix[ny][nx]
-                        if pixel_value < min_val:
-                            min_val = pixel_value
-            
-            output_matrix[y][x] = min_val
-            
+                        if pixel_value > max_val:
+                            max_val = pixel_value
+            output_matrix[y][x] = max_val
     return output_matrix
 
 def apply_opening(pixel_matrix, kernel_size=3):

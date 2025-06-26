@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
 # Importando os utilitários de imagem
-from src.view.image_utils import read_pgm, draw_image
+from src.view.image_utils import read_pgm, draw_image, write_pgm
 
 # Importando todos os módulos de algoritmos com os nomes em inglês
 from src.algorithms import (
@@ -108,7 +108,7 @@ class MainView(tk.Tk):
             frame = ttk.LabelFrame(self.sidebar_frame, text=section_title, padding=(10, 5))
             frame.pack(fill="x", padx=10, pady=10)
             for btn_text in buttons:
-                requires_two = section_title in ["Operações Algébricas", "Operações Lógicas", "Morfismo"]
+                requires_two = section_title in ["Soma", "Subtração", "OR", "AND", "XOR", "Iniciar Morfismo"]
                 ttk.Button(frame, text=btn_text, command=lambda op=btn_text, req=requires_two: self.execute_operation(op, req)).pack(fill="x", pady=2)
 
     def _create_content_area(self):
@@ -140,9 +140,13 @@ class MainView(tk.Tk):
         self.canvas_result.grid(row=1, column=3, sticky="nsew", padx=(5, 0))
         self._create_pixel_grid(content_frame, 'canvas_result').grid(row=2, column=3, sticky="nsew", padx=(5, 0), pady=(5,0))
         
-        for canvas_widget, canvas_key in [(self.canvas_1, 'canvas_1'), (self.canvas_2, 'canvas_2'), (self.canvas_result, 'canvas_result')]:
-            canvas_widget.bind('<Motion>', lambda e, key=canvas_key: self._on_mouse_motion(e, key))
-            canvas_widget.bind('<Leave>', self._on_mouse_leave)
+        self.canvas_1.bind('<Motion>', lambda e: self._on_mouse_motion(e, 'canvas_1'))
+        self.canvas_2.bind('<Motion>', lambda e: self._on_mouse_motion(e, 'canvas_2'))
+        self.canvas_result.bind('<Motion>', lambda e: self._on_mouse_motion(e, 'canvas_result'))
+        
+        self.canvas_1.bind('<Leave>', self._on_mouse_leave)
+        self.canvas_2.bind('<Leave>', self._on_mouse_leave)
+        self.canvas_result.bind('<Leave>', self._on_mouse_leave)
 
     def _create_kernel_display(self, parent):
         container_frame = ttk.Frame(parent, style="TFrame")
@@ -253,12 +257,19 @@ class MainView(tk.Tk):
             self.kernel_displays['gx']['frame'].config(text=main_title)
 
     def load_image(self, image_number):
-        filepath = filedialog.askopenfilename(title=f"Selecione a Imagem {image_number}", filetypes=[("PGM files", "*.pgm"), ("All files", "*.*")])
+        filepath = filedialog.askopenfilename(
+            title=f"Selecione a Imagem {image_number}",
+            filetypes=[
+                ("Imagens Suportadas", "*.pgm *.pbm"),
+                ("PGM", "*.pgm"),
+                ("PBM", "*.pbm"),
+                ("Todos os arquivos", "*.*")
+            ]
+        )
         if not filepath: return
         
         image_data = read_pgm(filepath)
         if image_data is None:
-            messagebox.showerror("Erro de Leitura", f"Não foi possível ler o arquivo PGM:\n{filepath}", parent=self)
             return
             
         pixel_matrix, _, _, _ = image_data
@@ -277,7 +288,19 @@ class MainView(tk.Tk):
         self.update_pixel_grid('canvas_result', -1, -1)
 
     def save_result_image(self):
-        print("Lógica para salvar imagem a ser implementada.")
+        if self.result_image_data is None:
+            messagebox.showwarning("Aviso", "Nenhuma imagem resultante para salvar.", parent=self)
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".pgm",
+            filetypes=[("PGM (Grayscale)", "*.pgm"), ("Todos os arquivos", "*.*")],
+            title="Salvar imagem resultante como..."
+        )
+        if not filepath:
+            return
+        
+        write_pgm(filepath, self.result_image_data)
 
     def execute_operation(self, operation_name, requires_two=False):
         if self.image_data_1 is None:
@@ -313,7 +336,7 @@ class MainView(tk.Tk):
         }
 
         if operation_name in kernels:
-            kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
+            kernel_gx, kernel_gy = kernels.get(operation_name)
             self.update_kernel_display(kernel_gx, kernel_gy, main_title="Kernel")
         elif operation_name in structuring_element:
             element = structuring_element.get(operation_name)
@@ -336,9 +359,8 @@ class MainView(tk.Tk):
             "Negativo": lambda: transformations.apply_negative(pixel_matrix),
             "Logaritmo": lambda: transformations.apply_logarithmic(pixel_matrix, max_val),
             "Faixa Dinâmica": lambda: transformations.apply_dynamic_range(pixel_matrix),
-            # --- CORREÇÃO: Chamadas trocadas para corresponder ao efeito visual esperado ---
-            "Dilatação": lambda: morphological.apply_erosion(pixel_matrix),
-            "Erosão": lambda: morphological.apply_dilation(pixel_matrix),
+            "Dilatação": lambda: morphological.apply_dilation(pixel_matrix),
+            "Erosão": lambda: morphological.apply_erosion(pixel_matrix),
             "Abertura": lambda: morphological.apply_opening(pixel_matrix),
             "Fechamento": lambda: morphological.apply_closing(pixel_matrix),
             "Borda Interna": lambda: morphological.apply_internal_border(pixel_matrix),
@@ -371,44 +393,20 @@ class MainView(tk.Tk):
             if params:
                 r1, s1, r2, s2 = params
                 result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
-        elif operation_name == "Soma":
-            if self.image_data_2: result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Subtração":
-            if self.image_data_2: result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Multiplicação":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
-            if factor is not None: result_matrix = algebric_operations.multiplicar_imagem(self.image_data_1[0], factor)
-        elif operation_name == "Divisão":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
-            if factor is not None and factor != 0:
-                result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
-            elif factor == 0:
-                messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
-        elif operation_name == "OR":
-             if self.image_data_2: result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "AND":
-             if self.image_data_2: result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "XOR":
-             if self.image_data_2: result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Iniciar Morfismo":
-            valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, initialvalue=0.5)
-            if valor_t is not None:
-                if 0 <= valor_t <= 1:
-                    result_matrix = morphism.aplicar_morfismo(self.image_data_1[0], self.image_data_2[0], valor_t)
-                else:
-                    messagebox.showerror("Erro", "O valor de t deve estar entre 0 e 1.", parent=self)
-
+        
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
             self.canvas_result.image_data = self.result_image_data
             draw_image(self.canvas_result, result_matrix)
         else:
-            self.canvas_result.delete("all")
-            if hasattr(self.canvas_result, 'image_data'): delattr(self.canvas_result, 'image_data')
-            self.update_pixel_grid('canvas_result', -1, -1)
+            if operation_name in operations and operations[operation_name] is not None:
+                pass 
+            else:
+                self.canvas_result.delete("all")
+                if hasattr(self.canvas_result, 'image_data'): delattr(self.canvas_result, 'image_data')
+                self.update_pixel_grid('canvas_result', -1, -1)
 
     def _ask_linear_params(self):
-        """Pede os 4 parâmetros para a transformação linear."""
         try:
             r1 = simpledialog.askinteger("Parâmetro Linear", "Insira o valor de r1 (0-255):", parent=self, minvalue=0, maxvalue=255)
             if r1 is None: return None

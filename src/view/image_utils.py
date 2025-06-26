@@ -35,7 +35,6 @@ def read_pgm(filepath):
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        # Filtra comentários e linhas em branco
         lines = [line for line in lines if line.strip() and not line.strip().startswith('#')]
         
         magic_number = lines[0].strip()
@@ -54,6 +53,33 @@ def read_pgm(filepath):
     except Exception as e:
         messagebox.showerror("Erro de Leitura", f"Ocorreu um erro ao ler o arquivo:\n{e}")
         return None
+
+def write_pgm(filepath, image_data):
+    """
+    Escreve uma matriz de pixels em um arquivo no formato PGM (P2).
+
+    Args:
+        filepath (str): O caminho para salvar o arquivo.
+        image_data (tuple): Tupla contendo (matriz_de_pixels, largura, altura, valor_maximo).
+    """
+    try:
+        pixel_matrix, width, height, max_val = image_data
+        
+        with open(filepath, 'w') as f:
+            # Escreve o cabeçalho do PGM
+            f.write("P2\n")
+            f.write(f"{width} {height}\n")
+            f.write(f"{max_val}\n")
+            
+            # Escreve os dados dos pixels
+            for row in pixel_matrix:
+                f.write(" ".join(map(str, row)) + "\n")
+        
+        messagebox.showinfo("Sucesso", f"Imagem salva com sucesso em:\n{filepath}")
+
+    except Exception as e:
+        messagebox.showerror("Erro ao Salvar", f"Não foi possível salvar a imagem:\n{e}")
+
 
 def draw_image(canvas, pixel_matrix):
     """
