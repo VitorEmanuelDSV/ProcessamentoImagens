@@ -107,3 +107,50 @@ def apply_bottom_hat(pixel_matrix, kernel_size=3):
     """
     closed_image = apply_closing(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(closed_image, pixel_matrix)
+
+def apply_hit_or_miss(binary_matrix, kernel_j, kernel_k):
+    """
+    Aplica o operador morfológico Hit-or-Miss.
+    A imagem deve ser binária (0 e 1).
+    kernel_j: estrutura para a forma (foreground).
+    kernel_k: estrutura para o fundo (background).
+    """
+    # Complemento da imagem: 0 vira 1, 1 vira 0
+    complement_matrix = [[1 - pixel for pixel in row] for row in binary_matrix]
+
+    # Erosões separadas
+    erosion_j = apply_custom_erosion(binary_matrix, kernel_j)
+    erosion_k = apply_custom_erosion(complement_matrix, kernel_k)
+
+    # Interseção (AND pixel a pixel)
+    height = len(binary_matrix)
+    width = len(binary_matrix[0])
+    result = [[erosion_j[y][x] & erosion_k[y][x] for x in range(width)] for y in range(height)]
+    return result
+
+def apply_custom_erosion(binary_matrix, kernel):
+    """
+    Aplica erosão com kernel arbitrário em uma imagem binária.
+    """
+    height = len(binary_matrix)
+    width = len(binary_matrix[0])
+    kh = len(kernel)
+    kw = len(kernel[0])
+    offset_y = kh // 2
+    offset_x = kw // 2
+
+    output = [[0 for _ in range(width)] for _ in range(height)]
+    for y in range(offset_y, height - offset_y):
+        for x in range(offset_x, width - offset_x):
+            match = True
+            for i in range(kh):
+                for j in range(kw):
+                    ky, kx = i - offset_y, j - offset_x
+                    if kernel[i][j] == 1:
+                        if binary_matrix[y + ky][x + kx] != 1:
+                            match = False
+                            break
+                if not match:
+                    break
+            output[y][x] = 1 if match else 0
+    return output
