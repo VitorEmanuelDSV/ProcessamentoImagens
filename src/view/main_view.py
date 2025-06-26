@@ -242,6 +242,16 @@ class MainView(tk.Tk):
             result_matrix = filters.apply_roberts_filter(pixel_matrix)
         elif operation_name == "Robert's Cruzado":
             result_matrix = filters.apply_roberts_cross_filter(pixel_matrix)
+        elif operation_name == "Soma":
+            result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Subtração":
+            result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Multiplicação":
+            fator = 1.5
+            result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], fator)
+        elif operation_name == "Divisão":
+            fator = 2
+            result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], fator)
 
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
