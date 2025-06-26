@@ -1,11 +1,6 @@
 # src/view/main_view.py
 
 import tkinter as tk
-import numpy as np
-from PIL import Image, ImageTk
-import imageio
-import numpy as np
-import os
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
 # Importando os utilitários de imagem
@@ -113,7 +108,7 @@ class MainView(tk.Tk):
             frame = ttk.LabelFrame(self.sidebar_frame, text=section_title, padding=(10, 5))
             frame.pack(fill="x", padx=10, pady=10)
             for btn_text in buttons:
-                requires_two = section_title in ["Soma", "Subtração", "OR", "AND", "XOR", "Iniciar Morfismo"]
+                requires_two = section_title in ["Operações Algébricas", "Operações Lógicas", "Morfismo"]
                 ttk.Button(frame, text=btn_text, command=lambda op=btn_text, req=requires_two: self.execute_operation(op, req)).pack(fill="x", pady=2)
 
     def _create_content_area(self):
@@ -321,22 +316,13 @@ class MainView(tk.Tk):
             "Média": ([[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]], None),
             "Detecção de Bordas": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
             "Passa Alta Básico": ([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]], None),
-            "Robert's": ([[0, 0, 0], [0, 1, 0], [0, -1, 0]], [[0, 0, 0], [0, 1, -1], [0, 0, 0]]),
-            "Robert's Cruzado": ([[0, 0, 0], [0, 1, 0], [0, 0, -1]], [[0, 0, 0], [0, 0, 1], [0, -1, 0]]),
+            "Robert's": ([[0,0,0],[0,1,0],[0,-1,0]], [[0,0,0],[0,1,-1],[0,0,0]]),
+            "Robert's Cruzado": ([[0,0,0],[0,1,0],[0,0,-1]], [[0,0,0],[0,0,1],[0,-1,0]]),
             "Prewitt": ([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]), 
             "Sobel": ([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]),
             "Hight-boost": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
-            "Hit-or-Miss": (
-                [[0, 1, 0],
-                [1, 1, 1],
-                [0, 1, 0]],  # kernel J (forma)
-
-                [[1, 0, 1],
-                [0, 0, 0],
-                [1, 0, 1]]   # kernel K (fundo)
-            )
         }
-
+        
         structuring_element = {
             "Dilatação": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Erosão": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
@@ -347,27 +333,14 @@ class MainView(tk.Tk):
             "Gradiente Morfológico": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Top-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Bottom-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-            "Hit-or-Miss": (
-                [[0, 1, 0],
-                [1, 1, 1],
-                [0, 1, 0]],  # kernel J
-
-                [[1, 0, 1],
-                [0, 0, 0],
-                [1, 0, 1]]   # kernel K
-            )
         }
 
-        # Lógica de exibição
         if operation_name in kernels:
             kernel_gx, kernel_gy = kernels.get(operation_name)
             self.update_kernel_display(kernel_gx, kernel_gy, main_title="Kernel")
         elif operation_name in structuring_element:
             element = structuring_element.get(operation_name)
-            if isinstance(element, tuple):
-                self.update_kernel_display(element[0], element[1], main_title="Elem. Estruturante")
-            else:
-                self.update_kernel_display(element, None, main_title="Elem. Estruturante")
+            self.update_kernel_display(element, None, main_title="Elem. Estruturante")
         else:
             self.update_kernel_display(None, None)
         
@@ -389,7 +362,6 @@ class MainView(tk.Tk):
             "Dilatação": lambda: morphological.apply_dilation(pixel_matrix),
             "Erosão": lambda: morphological.apply_erosion(pixel_matrix),
             "Abertura": lambda: morphological.apply_opening(pixel_matrix),
-            "Hit-or-Miss": lambda: morphological.apply_hit_or_miss(pixel_matrix, structuring_element["Hit-or-Miss"][0], structuring_element["Hit-or-Miss"][1]),
             "Fechamento": lambda: morphological.apply_closing(pixel_matrix),
             "Borda Interna": lambda: morphological.apply_internal_border(pixel_matrix),
             "Borda Externa": lambda: morphological.apply_external_border(pixel_matrix),
@@ -400,66 +372,56 @@ class MainView(tk.Tk):
 
         if operation_name in operations:
             result_matrix = operations[operation_name]()
-        elif operation_name == "Hight-boost":
-            factor_a = simpledialog.askfloat("Fator A", "Insira o valor de A (A > 1):", parent=self)
-            if factor_a is not None and factor_a > 1:
-                result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
-            elif factor_a is not None:
-                messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
-        elif operation_name == "Gamma":
-            gamma = simpledialog.askfloat("Gamma", "Insira o valor de gamma (γ):", parent=self, minvalue=0.0)
-            if gamma is not None:
-                result_matrix = transformations.apply_gamma_correction(pixel_matrix, gamma)
-        elif operation_name == "Intensidade Geral":
-            w = simpledialog.askfloat("Centro (w)", "Insira o valor do centro da faixa de cinza (w):", parent=self, initialvalue=127)
-            if w is not None:
-                sigma = simpledialog.askfloat("Largura (σ)", "Insira o valor da largura da janela (σ):", parent=self, initialvalue=20)
-                if sigma is not None:
-                    result_matrix = transformations.apply_sigmoid(pixel_matrix, w, sigma)
-        elif operation_name == "Linear":
-            params = self._ask_linear_params()
-            if params:
-                r1, s1, r2, s2 = params
-                result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
-
-         # Operações Algébricas
-        elif operation_name == "Soma":
-            result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Subtração":
-            result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Multiplicação":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
-            if factor is not None:
-                result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], factor)
-        elif operation_name == "Divisão":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
-            if factor is not None and factor != 0:
-                result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
-            elif factor == 0:
-                messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
-
-        # Operações Lógicas
-        elif operation_name == "OR":
-            result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "AND":
-            result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "XOR":
-            result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
-
-        # Morfismo
-        elif operation_name == "Iniciar Morfismo":
-            self.iniciar_morfismo_com_linhas()
-
-        # Histograma
         elif operation_name == "Equalizar Histograma":
             result_matrix = histogram.equalizacao_histograma(pixel_matrix)
             histogram.mostrar_histogramas(self, pixel_matrix, result_matrix)
+        elif operation_name == "Hight-boost":
+            factor_a = simpledialog.askfloat("Fator A", "Insira o valor de A (A > 1):", parent=self)
+            if factor_a is not None and factor_a > 1: result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
+            elif factor_a is not None: messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
+        elif operation_name == "Gamma":
+            gamma = simpledialog.askfloat("Gamma", "Insira o valor de gamma (γ):", parent=self, minvalue=0.0)
+            if gamma is not None: result_matrix = transformations.apply_gamma_correction(pixel_matrix, gamma)
+        elif operation_name == "Intensidade Geral":
+            w = simpledialog.askfloat("Centro (w)", "Insira o valor do centro (w):", parent=self, initialvalue=127)
+            if w is not None:
+                sigma = simpledialog.askfloat("Largura (σ)", "Insira o valor da largura (σ):", parent=self, initialvalue=20)
+                if sigma is not None: result_matrix = transformations.apply_sigmoid(pixel_matrix, w, sigma)
+        elif operation_name == "Linear":
+            params = self._ask_linear_params()
+            if params: r1, s1, r2, s2 = params; result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
+        elif operation_name == "Soma":
+            if self.image_data_2: result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Subtração":
+            if self.image_data_2: result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Multiplicação":
+            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
+            if factor is not None: result_matrix = algebric_operations.multiplicar_imagem(pixel_matrix, factor)
+        elif operation_name == "Divisão":
+            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
+            if factor is not None and factor != 0:
+                result_matrix = algebric_operations.dividir_imagem(pixel_matrix, factor)
+            elif factor == 0: messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
+        elif operation_name == "OR":
+             if self.image_data_2: result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "AND":
+             if self.image_data_2: result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "XOR":
+             if self.image_data_2: result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
+        elif operation_name == "Iniciar Morfismo":
+            valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, minvalue=0.0, maxvalue=1.0)
+            if valor_t is not None:
+                if self.image_data_2:
+                    result_matrix = morphism.aplicar_morfismo(self.image_data_1[0], self.image_data_2[0], valor_t)
+                else:
+                    messagebox.showwarning("Aviso", "A operação de Morfismo requer a 'Imagem 2'.", parent=self)
 
-        if operation_name != "Iniciar Morfismo":
-            if result_matrix:
-                self.result_image_data = (result_matrix, width, height, max_val)
-                self.canvas_result.image_data = self.result_image_data
-                draw_image(self.canvas_result, result_matrix)
+        if result_matrix:
+            self.result_image_data = (result_matrix, width, height, max_val)
+            self.canvas_result.image_data = self.result_image_data
+            draw_image(self.canvas_result, result_matrix)
+        else:
+            if operation_name in operations and operations[operation_name] is not None: pass
             else:
                 self.canvas_result.delete("all")
                 if hasattr(self.canvas_result, 'image_data'): delattr(self.canvas_result, 'image_data')
@@ -479,92 +441,3 @@ class MainView(tk.Tk):
         except (ValueError, TypeError):
             messagebox.showerror("Erro de Entrada", "Por favor, insira valores inteiros válidos.", parent=self)
             return None
-    
-    def iniciar_morfismo_com_linhas(self):
-        from src.algorithms.morphism import morph
-        import threading
-        import numpy as np
-        import imageio
-
-        if self.image_data_1 is None or self.image_data_2 is None:
-            messagebox.showerror("Erro", "Carregue as duas imagens primeiro.")
-            return
-
-        print("[INFO] Imagens carregadas. Iniciando morfismo...")
-
-        img1 = np.array(self.image_data_1[0], dtype=np.uint8)
-        img2 = np.array(self.image_data_2[0], dtype=np.uint8)
-
-        if img1.shape != img2.shape:
-            messagebox.showerror("Erro", "As imagens devem ter o mesmo tamanho.")
-            return
-
-        altura, largura = img1.shape
-
-        pontos1 = np.array([
-            [0, 0], [largura - 1, 0],
-            [0, altura - 1], [largura - 1, altura - 1],
-
-            [largura//4 - 5, altura//3], [largura//4 + 5, altura//3],
-            [3*largura//4 - 5, altura//3], [3*largura//4 + 5, altura//3],
-            [largura//3, 2*altura//3], [2*largura//3, 2*altura//3]
-        ])
-
-        pontos2 = np.array([
-            [0, 0], [largura - 1, 0],
-            [0, altura - 1], [largura - 1, altura - 1],
-
-            [largura//4 - 10, altura//3 - 5], [largura//4 + 10, altura//3 - 5],
-            [3*largura//4 - 10, altura//3 + 5], [3*largura//4 + 10, altura//3 + 5],
-            [largura//3 - 10, 2*altura//3 + 5], [2*largura//3 + 10, 2*altura//3 + 5]
-        ])
-
-        self._frames_morph = []
-        self._gif_path = "resultado_morphing.gif"
-        self._morph_index = 0
-
-        def gerar_frames():
-            total_frames = 60
-            print(f"[INFO] Gerando {total_frames} frames do morphing...")
-            for i in range(total_frames):
-                linear_t = i / (total_frames - 1)
-                t = 3 * linear_t**2 - 2 * linear_t**3
-                frame = morph(img1, img2, pontos1, pontos2, t)
-                self._frames_morph.append(frame)
-                if i % 10 == 0 or i == total_frames - 1:
-                    print(f"[DEBUG] Frame {i+1}/{total_frames} gerado")
-            print("[INFO] Salvando GIF...")
-            imageio.mimsave(self._gif_path, self._frames_morph, fps=30)
-            print(f"[INFO] GIF salvo em {self._gif_path}")
-            self.after(0, self._exibir_gif_morph)
-
-        threading.Thread(target=gerar_frames, daemon=True).start()
-
-    def _exibir_gif_morph(self):
-        try:
-            print("Carregando frames do GIF...")
-            from PIL import Image, ImageTk
-            self._gif_frames = []
-            with Image.open(self._gif_path) as gif:
-                for frame_index in range(gif.n_frames):
-                    gif.seek(frame_index)
-                    frame = gif.copy().convert("L")
-                    self._gif_frames.append(ImageTk.PhotoImage(frame))
-            print(f"Total de frames carregados: {len(self._gif_frames)}")
-            self._gif_index = 0
-            self._animar_gif_result()
-        except Exception as e:
-            messagebox.showerror("Erro ao exibir GIF", str(e))
-            print("Erro ao exibir GIF:", e)
-
-    def _animar_gif_result(self):
-        if not hasattr(self, '_gif_frames') or not self._gif_frames:
-            return
-
-        frame = self._gif_frames[self._gif_index]
-        self.canvas_result.delete("all")
-        self.canvas_result.create_image(0, 0, anchor="nw", image=frame)
-        self.canvas_result.image = frame
-
-        self._gif_index = (self._gif_index + 1) % len(self._gif_frames)
-        self.after(33, self._animar_gif_result)

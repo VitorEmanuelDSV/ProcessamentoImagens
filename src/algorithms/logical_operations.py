@@ -1,3 +1,5 @@
+# src/algorithms/logical_operations.py
+
 def or_imagens(img1, img2):
     """
     Aplica a operação lógica OR pixel a pixel entre duas imagens.

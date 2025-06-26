@@ -55,102 +55,95 @@ def apply_erosion(pixel_matrix, kernel_size=3):
     return output_matrix
 
 def apply_opening(pixel_matrix, kernel_size=3):
-    """
-    Aplica a operação de abertura morfológica (Erosão -> Dilatação).
-    """
+    """Aplica a operação de abertura morfológica (Erosão -> Dilatação)."""
     eroded_image = apply_erosion(pixel_matrix, kernel_size)
     opened_image = apply_dilation(eroded_image, kernel_size)
     return opened_image
 
 def apply_closing(pixel_matrix, kernel_size=3):
-    """
-    Aplica a operação de fechamento morfológico (Dilatação -> Erosão).
-    """
+    """Aplica a operação de fechamento morfológico (Dilatação -> Erosão)."""
     dilated_image = apply_dilation(pixel_matrix, kernel_size)
     closed_image = apply_erosion(dilated_image, kernel_size)
     return closed_image
 
 def apply_internal_border(pixel_matrix, kernel_size=3):
-    """
-    Calcula a borda interna de uma imagem (Original - Erodida).
-    """
+    """Calcula a borda interna de uma imagem (Original - Erodida)."""
     eroded_image = apply_erosion(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(pixel_matrix, eroded_image)
 
 def apply_external_border(pixel_matrix, kernel_size=3):
-    """
-    Calcula a borda externa de uma imagem (Dilatada - Original).
-    """
+    """Calcula a borda externa de uma imagem (Dilatada - Original)."""
     dilated_image = apply_dilation(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(dilated_image, pixel_matrix)
 
 def apply_morphological_gradient(pixel_matrix, kernel_size=3):
-    """
-    Calcula o gradiente morfológico de uma imagem (Dilatação - Erosão).
-    """
+    """Calcula o gradiente morfológico de uma imagem (Dilatação - Erosão)."""
     dilated_image = apply_dilation(pixel_matrix, kernel_size)
     eroded_image = apply_erosion(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(dilated_image, eroded_image)
 
 def apply_top_hat(pixel_matrix, kernel_size=3):
-    """
-    Aplica a transformação Top-Hat (Original - Abertura).
-    Realça pequenos detalhes claros em fundos escuros.
-    """
+    """Aplica a transformação Top-Hat (Original - Abertura)."""
     opened_image = apply_opening(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(pixel_matrix, opened_image)
 
 def apply_bottom_hat(pixel_matrix, kernel_size=3):
-    """
-    Aplica a transformação Bottom-Hat (Fechamento - Original).
-    Realça pequenos detalhes escuros em fundos claros.
-    """
+    """Aplica a transformação Bottom-Hat (Fechamento - Original)."""
     closed_image = apply_closing(pixel_matrix, kernel_size)
     return matrix_utils.subtract_matrices(closed_image, pixel_matrix)
 
-def apply_hit_or_miss(binary_matrix, kernel_j, kernel_k):
-    """
-    Aplica o operador morfológico Hit-or-Miss.
-    A imagem deve ser binária (0 e 1).
-    kernel_j: estrutura para a forma (foreground).
-    kernel_k: estrutura para o fundo (background).
-    """
-    # Complemento da imagem: 0 vira 1, 1 vira 0
-    complement_matrix = [[1 - pixel for pixel in row] for row in binary_matrix]
+# --- Funções para Hit-or-Miss ---
 
-    # Erosões separadas
-    erosion_j = apply_custom_erosion(binary_matrix, kernel_j)
-    erosion_k = apply_custom_erosion(complement_matrix, kernel_k)
-
-    # Interseção (AND pixel a pixel)
+def _apply_binary_erosion(binary_matrix, kernel):
+    """Aplica erosão com um kernel específico em uma imagem binária (0 ou 1)."""
     height = len(binary_matrix)
     width = len(binary_matrix[0])
-    result = [[erosion_j[y][x] & erosion_k[y][x] for x in range(width)] for y in range(height)]
-    return result
-
-def apply_custom_erosion(binary_matrix, kernel):
-    """
-    Aplica erosão com kernel arbitrário em uma imagem binária.
-    """
-    height = len(binary_matrix)
-    width = len(binary_matrix[0])
-    kh = len(kernel)
-    kw = len(kernel[0])
-    offset_y = kh // 2
-    offset_x = kw // 2
-
-    output = [[0 for _ in range(width)] for _ in range(height)]
+    kh, kw = len(kernel), len(kernel[0])
+    offset_y, offset_x = kh // 2, kw // 2
+    
+    eroded_image = [[0 for _ in range(width)] for _ in range(height)]
+    
     for y in range(offset_y, height - offset_y):
         for x in range(offset_x, width - offset_x):
             match = True
             for i in range(kh):
                 for j in range(kw):
-                    ky, kx = i - offset_y, j - offset_x
                     if kernel[i][j] == 1:
-                        if binary_matrix[y + ky][x + kx] != 1:
+                        if binary_matrix[y + i - offset_y][x + j - offset_x] == 0:
                             match = False
                             break
                 if not match:
                     break
-            output[y][x] = 1 if match else 0
-    return output
+            if match:
+                eroded_image[y][x] = 1
+                
+    return eroded_image
+
+def apply_hit_or_miss(binary_matrix, kernel_j, kernel_k):
+    """
+    Aplica o operador Hit-or-Miss.
+    A imagem deve ser binária (0s e 1s).
+    A = imagem original.
+    A^c = complemento da imagem.
+    Resultado = (A erodido por J) INTERSEÇÃO (A^c erodido por K)
+    """
+    # 1. Erosão da imagem original pelo kernel J (Hit)
+    erosion_j = _apply_binary_erosion(binary_matrix, kernel_j)
+    
+    # 2. Criação do complemento da imagem
+    complement_matrix = [[1 - pixel for pixel in row] for row in binary_matrix]
+    
+    # 3. Erosão do complemento pelo kernel K (Miss)
+    erosion_k = _apply_binary_erosion(complement_matrix, kernel_k)
+    
+    # 4. Interseção (AND) dos dois resultados
+    height = len(binary_matrix)
+    width = len(binary_matrix[0])
+    result = [[0 for _ in range(width)] for _ in range(height)]
+    for y in range(height):
+        for x in range(width):
+            if erosion_j[y][x] == 1 and erosion_k[y][x] == 1:
+                result[y][x] = 1
+                
+    return result
+

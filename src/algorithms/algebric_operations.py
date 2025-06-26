@@ -1,3 +1,5 @@
+# src/algorithms/algebric_operations.py
+
 def somar_imagens(img1, img2):
     """
     Soma pixel a pixel entre duas imagens, ajustando para o menor tamanho comum.
@@ -21,24 +23,24 @@ def somar_imagens(img1, img2):
 
 def subtrair_imagens(img1, img2):
     """
-    Realiza a subtração pixel a pixel de duas imagens.
+    Realiza a subtração pixel a pixel de duas imagens, ajustando para o menor tamanho.
     """
     print(">>> LÓGICA: Subtraindo imagens...")
     if not img1 or not img2:
         return None
 
-    height = len(img1)
-    width = len(img1[0])
+    height = min(len(img1), len(img2))
+    width = min(len(img1[0]), len(img2[0]))
     resultado = [[0 for _ in range(width)] for _ in range(height)]
 
     for y in range(height):
         for x in range(width):
             subtracao = img1[y][x] - img2[y][x]
-            resultado[y][x] = max(subtracao, 0)  # evita underflow
+            resultado[y][x] = max(subtracao, 0) 
 
     return resultado
 
-def multiplicar_imagens(img1, fator):
+def multiplicar_imagem(img1, fator):
     """
     Multiplica os pixels da imagem por um fator escalar.
     """
@@ -53,7 +55,7 @@ def multiplicar_imagens(img1, fator):
     for y in range(height):
         for x in range(width):
             produto = img1[y][x] * fator
-            resultado[y][x] = min(int(round(produto)), 255)  # evita overflow
+            resultado[y][x] = min(int(round(produto)), 255)
 
     return resultado
 

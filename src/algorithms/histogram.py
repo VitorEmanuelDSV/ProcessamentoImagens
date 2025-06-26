@@ -1,3 +1,5 @@
+# src/algorithms/histogram.py
+
 from tkinter import Toplevel, Canvas, Label
 
 def equalizacao_histograma(imagem):
@@ -6,6 +8,8 @@ def equalizacao_histograma(imagem):
     A imagem é uma matriz (lista de listas) com valores de 0 a 255.
     """
     print(">>> LÓGICA: Equalização de Histograma")
+    if not imagem:
+        return None
 
     altura = len(imagem)
     largura = len(imagem[0])
@@ -27,13 +31,17 @@ def equalizacao_histograma(imagem):
 
     # 3. Normalizar a CDF
     cdf_min = next((valor for valor in cdf if valor > 0), 0)
+    
+    # Denominador para a normalização
+    denominador = total_pixels - cdf_min
+    if denominador == 0:
+        # Se todos os pixels tiverem a mesma cor, retorna a imagem original
+        return imagem
+
     cdf_normalizado = [0] * 256
     for i in range(256):
-        if total_pixels - cdf_min == 0:
-            cdf_normalizado[i] = 0
-        else:
-            cdf_normalizado[i] = round((cdf[i] - cdf_min) / (total_pixels - cdf_min) * 255)
-            cdf_normalizado[i] = max(0, min(255, cdf_normalizado[i]))
+        cdf_normalizado[i] = round(((cdf[i] - cdf_min) / denominador) * 255)
+        cdf_normalizado[i] = max(0, min(255, cdf_normalizado[i]))
 
     # 4. Criar imagem resultante com valores equalizados
     resultado = [[0 for _ in range(largura)] for _ in range(altura)]
@@ -54,6 +62,20 @@ def gerar_histograma(imagem):
             histograma[intensidade] += 1
     return histograma
 
+def desenhar_histograma(canvas, histograma, max_freq, altura_canvas, largura_canvas):
+    """
+    Desenha manualmente as barras de um histograma em um Canvas.
+    """
+    largura_barra = largura_canvas / 256.0
+    for x in range(256):
+        freq = histograma[x]
+        altura_barra = int((freq / max_freq) * (altura_canvas - 10)) if max_freq > 0 else 0
+        x0 = x * largura_barra
+        y0 = altura_canvas
+        x1 = (x + 1) * largura_barra
+        y1 = altura_canvas - altura_barra
+        canvas.create_rectangle(x0, y0, x1, y1, fill="black", outline="")
+
 def mostrar_histogramas(parent, imagem_original, imagem_equalizada):
     """
     Mostra uma janela com os histogramas desenhados manualmente.
@@ -61,30 +83,28 @@ def mostrar_histogramas(parent, imagem_original, imagem_equalizada):
     hist_original = gerar_histograma(imagem_original)
     hist_equalizado = gerar_histograma(imagem_equalizada)
 
-    max_freq = max(max(hist_original), max(hist_equalizado))
-    altura_canvas = 300
-    largura_canvas = 400
+    # Encontra a frequência máxima entre os dois histogramas para uma escala consistente
+    try:
+        max_freq = max(max(hist_original), max(hist_equalizado))
+    except ValueError:
+        max_freq = 1 # Evita erro se o histograma estiver vazio
+
+    altura_canvas = 256
+    largura_canvas = 512
 
     janela = Toplevel(parent)
     janela.title("Histogramas")
-    janela.geometry(f"{largura_canvas + 40}x{altura_canvas * 2 + 150}")
-    janela.resizable(False, False)
+    janela.configure(bg="#2e2e2e")
+    
+    # Estilo dos labels
+    label_style = {'bg': "#2e2e2e", 'fg': "#dcdcdc", 'font': ('Arial', 12)}
 
-    Label(janela, text="Histograma Original").pack()
+    Label(janela, text="Histograma Original", **label_style).pack(pady=(10,2))
     canvas_original = Canvas(janela, width=largura_canvas, height=altura_canvas, bg="white")
     canvas_original.pack(padx=10, pady=(0, 10))
-    desenhar_histograma(canvas_original, hist_original, max_freq, altura_canvas)
+    desenhar_histograma(canvas_original, hist_original, max_freq, altura_canvas, largura_canvas)
 
-    Label(janela, text="Histograma Equalizado").pack()
+    Label(janela, text="Histograma Equalizado", **label_style).pack(pady=(10,2))
     canvas_equalizado = Canvas(janela, width=largura_canvas, height=altura_canvas, bg="white")
     canvas_equalizado.pack(padx=10, pady=(0, 10))
-    desenhar_histograma(canvas_equalizado, hist_equalizado, max_freq, altura_canvas)
-
-def desenhar_histograma(canvas, histograma, max_freq, altura_canvas):
-    """
-    Desenha manualmente as barras de um histograma em um Canvas.
-    """
-    for x in range(256):
-        freq = histograma[x]
-        altura = int((freq / max_freq) * (altura_canvas - 10)) if max_freq > 0 else 0
-        canvas.create_line(x, altura_canvas, x, altura_canvas - altura, fill="black")
+    desenhar_histograma(canvas_equalizado, hist_equalizado, max_freq, altura_canvas, largura_canvas)
