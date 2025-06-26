@@ -381,6 +381,11 @@ class MainView(tk.Tk):
                 else:
                     messagebox.showerror("Erro", "O valor de t deve estar entre 0 e 1.", parent=self)
 
+        # Histograma
+        elif operation_name == "Equalizar Histograma":
+            result_matrix = histogram.equalizacao_histograma(pixel_matrix)
+            histogram.mostrar_histogramas(self, pixel_matrix, result_matrix)
+
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
             self.canvas_result.image_data = self.result_image_data
