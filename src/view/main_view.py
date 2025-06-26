@@ -140,11 +140,9 @@ class MainView(tk.Tk):
         self.canvas_result.grid(row=1, column=3, sticky="nsew", padx=(5, 0))
         self._create_pixel_grid(content_frame, 'canvas_result').grid(row=2, column=3, sticky="nsew", padx=(5, 0), pady=(5,0))
         
-        # --- CORREÇÃO: Associa os eventos do mouse após a criação dos canvases ---
         for canvas_widget, canvas_key in [(self.canvas_1, 'canvas_1'), (self.canvas_2, 'canvas_2'), (self.canvas_result, 'canvas_result')]:
             canvas_widget.bind('<Motion>', lambda e, key=canvas_key: self._on_mouse_motion(e, key))
             canvas_widget.bind('<Leave>', self._on_mouse_leave)
-
 
     def _create_kernel_display(self, parent):
         container_frame = ttk.Frame(parent, style="TFrame")
@@ -274,12 +272,9 @@ class MainView(tk.Tk):
             
         draw_image(canvas, pixel_matrix)
         
-        # --- CORREÇÃO: Remove a associação de eventos daqui ---
-
         self.canvas_result.delete("all")
         if hasattr(self.canvas_result, 'image_data'): delattr(self.canvas_result, 'image_data')
         self.update_pixel_grid('canvas_result', -1, -1)
-
 
     def save_result_image(self):
         print("Lógica para salvar imagem a ser implementada.")
@@ -311,6 +306,7 @@ class MainView(tk.Tk):
         pixel_matrix, width, height, max_val = self.image_data_1
         result_matrix = None
         
+        # Mapeamento de filtros e transformações simples
         operations = {
             "Média": lambda: filters.apply_mean_filter(pixel_matrix),
             "Mediana": lambda: filters.apply_median_filter(pixel_matrix),
@@ -325,6 +321,7 @@ class MainView(tk.Tk):
 
         if operation_name in operations:
             result_matrix = operations[operation_name]()
+        # Operações com parâmetros ou duas imagens
         elif operation_name == "Hight-boost":
             factor_a = simpledialog.askfloat("Fator A", "Insira o valor de A (A > 1):", parent=self)
             if factor_a is not None:
@@ -332,16 +329,24 @@ class MainView(tk.Tk):
                     result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
                 else:
                     messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
+        
+        # Operações Algébricas
         elif operation_name == "Soma":
             result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Subtração":
             result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Multiplicação":
-            fator = 1.5
-            result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], fator)
+            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
+            if factor is not None:
+                result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], factor)
         elif operation_name == "Divisão":
-            fator = 2
-            result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], fator)
+            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
+            if factor is not None and factor != 0:
+                result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
+            elif factor == 0:
+                messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
+
+        # Operações Lógicas
         elif operation_name == "OR":
             result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "AND":
