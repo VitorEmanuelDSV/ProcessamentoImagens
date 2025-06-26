@@ -300,13 +300,16 @@ class MainView(tk.Tk):
             "Hight-boost": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
         }
         
-        kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
-        self.update_kernel_display(kernel_gx, kernel_gy)
+        # Limpa o display do kernel para operações não-filtro
+        if operation_name not in kernels:
+            self.update_kernel_display(None, None)
+        else:
+            kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
+            self.update_kernel_display(kernel_gx, kernel_gy)
         
         pixel_matrix, width, height, max_val = self.image_data_1
         result_matrix = None
         
-        # Mapeamento de filtros e transformações simples
         operations = {
             "Média": lambda: filters.apply_mean_filter(pixel_matrix),
             "Mediana": lambda: filters.apply_median_filter(pixel_matrix),
@@ -316,43 +319,34 @@ class MainView(tk.Tk):
             "Robert's Cruzado": lambda: filters.apply_roberts_cross_filter(pixel_matrix),
             "Prewitt": lambda: filters.apply_prewitt_filter(pixel_matrix),
             "Sobel": lambda: filters.apply_sobel_filter(pixel_matrix),
-            "Negativo": lambda: transformations.apply_negative(pixel_matrix)
+            "Negativo": lambda: transformations.apply_negative(pixel_matrix),
+            "Logaritmo": lambda: transformations.apply_logarithmic(pixel_matrix, max_val),
+            "Faixa Dinâmica": lambda: transformations.apply_dynamic_range(pixel_matrix),
         }
 
         if operation_name in operations:
             result_matrix = operations[operation_name]()
-        # Operações com parâmetros ou duas imagens
         elif operation_name == "Hight-boost":
             factor_a = simpledialog.askfloat("Fator A", "Insira o valor de A (A > 1):", parent=self)
-            if factor_a is not None:
-                if factor_a > 1:
-                    result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
-                else:
-                    messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
-        
-        # Operações Algébricas
-        elif operation_name == "Soma":
-            result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Subtração":
-            result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "Multiplicação":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
-            if factor is not None:
-                result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], factor)
-        elif operation_name == "Divisão":
-            factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
-            if factor is not None and factor != 0:
-                result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
-            elif factor == 0:
-                messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
-
-        # Operações Lógicas
-        elif operation_name == "OR":
-            result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "AND":
-            result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
-        elif operation_name == "XOR":
-            result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
+            if factor_a is not None and factor_a > 1:
+                result_matrix = filters.apply_high_boost_filter(pixel_matrix, factor_a)
+            elif factor_a is not None:
+                messagebox.showerror("Valor Inválido", "O fator A deve ser maior que 1.", parent=self)
+        elif operation_name == "Gamma":
+            gamma = simpledialog.askfloat("Gamma", "Insira o valor de gamma (γ):", parent=self, minvalue=0.0)
+            if gamma is not None:
+                result_matrix = transformations.apply_gamma_correction(pixel_matrix, gamma)
+        elif operation_name == "Intensidade Geral":
+            w = simpledialog.askfloat("Centro (w)", "Insira o valor do centro da faixa de cinza (w):", parent=self, initialvalue=127)
+            if w is not None:
+                sigma = simpledialog.askfloat("Largura (σ)", "Insira o valor da largura da janela (σ):", parent=self, initialvalue=20)
+                if sigma is not None:
+                    result_matrix = transformations.apply_sigmoid(pixel_matrix, w, sigma)
+        elif operation_name == "Linear":
+            params = self._ask_linear_params()
+            if params:
+                r1, s1, r2, s2 = params
+                result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
 
         # Morfismo
         elif operation_name == "Iniciar Morfismo":
@@ -373,3 +367,19 @@ class MainView(tk.Tk):
             self.canvas_result.delete("all")
             if hasattr(self.canvas_result, 'image_data'): delattr(self.canvas_result, 'image_data')
             self.update_pixel_grid('canvas_result', -1, -1)
+
+    def _ask_linear_params(self):
+        """Pede os 4 parâmetros para a transformação linear."""
+        try:
+            r1 = simpledialog.askinteger("Parâmetro Linear", "Insira o valor de r1 (0-255):", parent=self, minvalue=0, maxvalue=255)
+            if r1 is None: return None
+            s1 = simpledialog.askinteger("Parâmetro Linear", "Insira o valor de s1 (0-255):", parent=self, minvalue=0, maxvalue=255)
+            if s1 is None: return None
+            r2 = simpledialog.askinteger("Parâmetro Linear", "Insira o valor de r2 (r1-255):", parent=self, minvalue=r1, maxvalue=255)
+            if r2 is None: return None
+            s2 = simpledialog.askinteger("Parâmetro Linear", "Insira o valor de s2 (0-255):", parent=self, minvalue=0, maxvalue=255)
+            if s2 is None: return None
+            return r1, s1, r2, s2
+        except (ValueError, TypeError):
+            messagebox.showerror("Erro de Entrada", "Por favor, insira valores inteiros válidos.", parent=self)
+            return None
