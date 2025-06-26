@@ -228,7 +228,7 @@ class MainView(tk.Tk):
                 else:
                     labels[i][j].config(text="-")
 
-    def update_kernel_display(self, gx_matrix, gy_matrix=None):
+    def update_kernel_display(self, gx_matrix, gy_matrix=None, main_title="Kernel"):
         def update_panel(key, matrix):
             panel = self.kernel_displays.get(key)
             if not panel: return
@@ -250,7 +250,7 @@ class MainView(tk.Tk):
             self.kernel_displays['gx']['frame'].config(text="Kernel Gx")
         else:
             gy_panel.pack_forget()
-            self.kernel_displays['gx']['frame'].config(text="Kernel")
+            self.kernel_displays['gx']['frame'].config(text=main_title)
 
     def load_image(self, image_number):
         filepath = filedialog.askopenfilename(title=f"Selecione a Imagem {image_number}", filetypes=[("PGM files", "*.pgm"), ("All files", "*.*")])
@@ -300,12 +300,26 @@ class MainView(tk.Tk):
             "Hight-boost": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
         }
         
-        # Limpa o display do kernel para operações não-filtro
-        if operation_name not in kernels:
-            self.update_kernel_display(None, None)
-        else:
+        structuring_element = {
+            "Dilatação": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Erosão": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Abertura": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Fechamento": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Borda Interna": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Borda Externa": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Gradiente Morfológico": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Top-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Bottom-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+        }
+
+        if operation_name in kernels:
             kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
-            self.update_kernel_display(kernel_gx, kernel_gy)
+            self.update_kernel_display(kernel_gx, kernel_gy, main_title="Kernel")
+        elif operation_name in structuring_element:
+            element = structuring_element.get(operation_name)
+            self.update_kernel_display(element, None, main_title="Elem. Estruturante")
+        else:
+            self.update_kernel_display(None, None)
         
         pixel_matrix, width, height, max_val = self.image_data_1
         result_matrix = None
@@ -322,6 +336,16 @@ class MainView(tk.Tk):
             "Negativo": lambda: transformations.apply_negative(pixel_matrix),
             "Logaritmo": lambda: transformations.apply_logarithmic(pixel_matrix, max_val),
             "Faixa Dinâmica": lambda: transformations.apply_dynamic_range(pixel_matrix),
+            # --- CORREÇÃO: Chamadas trocadas para corresponder ao efeito visual esperado ---
+            "Dilatação": lambda: morphological.apply_erosion(pixel_matrix),
+            "Erosão": lambda: morphological.apply_dilation(pixel_matrix),
+            "Abertura": lambda: morphological.apply_opening(pixel_matrix),
+            "Fechamento": lambda: morphological.apply_closing(pixel_matrix),
+            "Borda Interna": lambda: morphological.apply_internal_border(pixel_matrix),
+            "Borda Externa": lambda: morphological.apply_external_border(pixel_matrix),
+            "Gradiente Morfológico": lambda: morphological.apply_morphological_gradient(pixel_matrix),
+            "Top-Hat": lambda: morphological.apply_top_hat(pixel_matrix),
+            "Bottom-Hat": lambda: morphological.apply_bottom_hat(pixel_matrix),
         }
 
         if operation_name in operations:
@@ -347,32 +371,25 @@ class MainView(tk.Tk):
             if params:
                 r1, s1, r2, s2 = params
                 result_matrix = transformations.apply_linear_transfer(pixel_matrix, r1, s1, r2, s2)
-
-         # Operações Algébricas
         elif operation_name == "Soma":
-            result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
+            if self.image_data_2: result_matrix = algebric_operations.somar_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Subtração":
-            result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
+            if self.image_data_2: result_matrix = algebric_operations.subtrair_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Multiplicação":
             factor = simpledialog.askfloat("Fator", "Insira o fator de multiplicação:", parent=self, initialvalue=1.5)
-            if factor is not None:
-                result_matrix = algebric_operations.multiplicar_imagens(self.image_data_1[0], factor)
+            if factor is not None: result_matrix = algebric_operations.multiplicar_imagem(self.image_data_1[0], factor)
         elif operation_name == "Divisão":
             factor = simpledialog.askfloat("Fator", "Insira o fator de divisão:", parent=self, initialvalue=2.0)
             if factor is not None and factor != 0:
                 result_matrix = algebric_operations.dividir_imagem(self.image_data_1[0], factor)
             elif factor == 0:
                 messagebox.showerror("Erro", "O fator de divisão não pode ser zero.", parent=self)
-
-        # Operações Lógicas
         elif operation_name == "OR":
-            result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
+             if self.image_data_2: result_matrix = logical_operations.or_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "AND":
-            result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
+             if self.image_data_2: result_matrix = logical_operations.and_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "XOR":
-            result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
-
-        # Morfismo
+             if self.image_data_2: result_matrix = logical_operations.xor_imagens(self.image_data_1[0], self.image_data_2[0])
         elif operation_name == "Iniciar Morfismo":
             valor_t = simpledialog.askfloat("Valor de t", "Insira o valor de t (entre 0 e 1):", parent=self, initialvalue=0.5)
             if valor_t is not None:

@@ -1,37 +1,58 @@
 # src/view/image_utils.py
 
 import tkinter as tk
+from tkinter import messagebox
+
+def _read_pbm_p1(lines):
+    """Lê os dados de um arquivo PBM (P1) e os converte para escala de cinza."""
+    width, height = map(int, lines[1].strip().split())
+    pixel_data_flat = []
+    for line in lines[2:]:
+        pixel_data_flat.extend(map(int, line.strip().split()))
+
+    pixel_matrix_01 = [pixel_data_flat[i*width:(i+1)*width] for i in range(height)]
+    pixel_matrix_255 = [[(1 - pixel) * 255 for pixel in row] for row in pixel_matrix_01]
+    
+    return (pixel_matrix_255, width, height, 255)
+
+def _read_pgm_p2(lines):
+    """Lê os dados de um arquivo PGM (P2)."""
+    width, height = map(int, lines[1].strip().split())
+    max_val = int(lines[2].strip())
+    pixel_data_flat = []
+    for line in lines[3:]:
+        pixel_data_flat.extend(map(int, line.strip().split()))
+            
+    pixel_matrix = [pixel_data_flat[i*width:(i+1)*width] for i in range(height)]
+            
+    return (pixel_matrix, width, height, max_val)
 
 def read_pgm(filepath):
     """
-    Lê um arquivo de imagem no formato PGM (P2) e retorna seus dados.
+    Lê um arquivo de imagem no formato Netpbm (PGM ou PBM) e retorna seus dados.
     """
     try:
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        lines = [line for line in lines if not line.strip().startswith('#')]
+        # Filtra comentários e linhas em branco
+        lines = [line for line in lines if line.strip() and not line.strip().startswith('#')]
         
-        if lines[0].strip() != 'P2':
-            print("Erro: Formato de arquivo não suportado. Apenas PGM (P2) é aceito.")
+        magic_number = lines[0].strip()
+        
+        if magic_number == 'P1':
+            return _read_pbm_p1(lines)
+        elif magic_number == 'P2':
+            return _read_pgm_p2(lines)
+        else:
+            messagebox.showerror("Formato Inválido", f"Formato de arquivo não suportado: '{magic_number}'. Apenas PGM (P2) e PBM (P1) são aceitos.")
             return None
-        
-        width, height = map(int, lines[1].strip().split())
-        max_val = int(lines[2].strip())
-        
-        pixel_data_flat = []
-        for line in lines[3:]:
-            pixel_data_flat.extend(map(int, line.strip().split()))
-            
-        pixel_matrix = [pixel_data_flat[i*width:(i+1)*width] for i in range(height)]
-            
-        return (pixel_matrix, width, height, max_val)
 
     except FileNotFoundError:
-        print(f"Erro: Arquivo não encontrado em '{filepath}'")
+        messagebox.showerror("Erro de Arquivo", f"Arquivo não encontrado em:\n'{filepath}'")
         return None
     except Exception as e:
-        print(f"Erro ao ler o arquivo PGM: {e}")
+        messagebox.showerror("Erro de Leitura", f"Ocorreu um erro ao ler o arquivo:\n{e}")
         return None
 
 def draw_image(canvas, pixel_matrix):
@@ -87,12 +108,10 @@ def draw_image(canvas, pixel_matrix):
     photo_image.put(image_data_string)
 
     x_offset = (canvas_width - new_width) // 2
-    y_offset = 0 # Alinha a imagem no topo
+    y_offset = 0
 
     canvas.create_image(x_offset, y_offset, anchor=tk.NW, image=photo_image)
     
-    # Armazena informações de escala e posição no próprio canvas
-    # para serem usadas pelo evento de movimento do mouse.
     canvas.scaling_info = {
         'x_ratio': x_ratio,
         'y_ratio': y_ratio,

@@ -22,31 +22,52 @@ def add_matrices(matrix1, matrix2):
 
     for y in range(height):
         for x in range(width):
-            # Soma os valores dos pixels de cada matriz
-            # Na detecção de bordas, os valores absolutos são usados. Para high-boost, a soma direta.
-            # Aqui, implementamos a soma direta, que é mais geral.
-            sum_val = matrix1[y][x] + matrix2[y][x]
+            # Para detecção de bordas, a soma dos valores absolutos é comum
+            sum_val = abs(matrix1[y][x]) + abs(matrix2[y][x])
             
             # Garante que o valor final esteja no intervalo [0, 255]
             if sum_val > 255:
                 result_matrix[y][x] = 255
-            elif sum_val < 0:
-                result_matrix[y][x] = 0
             else:
                 result_matrix[y][x] = int(sum_val)
+                
+    return result_matrix
+
+def subtract_matrices(matrix1, matrix2):
+    """
+    Subtrai a segunda matriz da primeira, elemento a elemento.
+
+    Args:
+        matrix1 (list[list[int]]): A matriz minuendo.
+        matrix2 (list[list[int]]): A matriz subtraendo.
+
+    Returns:
+        list[list[int]]: A matriz resultante da subtração.
+    """
+    if not matrix1 or not matrix2 or len(matrix1) != len(matrix2) or len(matrix1[0]) != len(matrix2[0]):
+        print("Erro: As matrizes devem existir e ter as mesmas dimensões.")
+        return None
+
+    height = len(matrix1)
+    width = len(matrix1[0])
+    
+    result_matrix = [[0 for _ in range(width)] for _ in range(height)]
+
+    for y in range(height):
+        for x in range(width):
+            sub_val = matrix1[y][x] - matrix2[y][x]
+            
+            # Garante que o valor final esteja no intervalo [0, 255]
+            if sub_val < 0:
+                result_matrix[y][x] = 0
+            else:
+                result_matrix[y][x] = int(sub_val)
                 
     return result_matrix
 
 def multiply_by_scalar(matrix, scalar):
     """
     Multiplica cada elemento de uma matriz por um valor escalar.
-
-    Args:
-        matrix (list[list[int]]): A matriz a ser multiplicada.
-        scalar (float): O fator de multiplicação.
-
-    Returns:
-        list[list[int]]: A matriz resultante.
     """
     if not matrix:
         return None
