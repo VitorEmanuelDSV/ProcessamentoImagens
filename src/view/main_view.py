@@ -48,7 +48,7 @@ class MainView(tk.Tk):
         self.image_data_1 = None
         self.image_data_2 = None
         self.result_image_data = None
-        self.kernel_labels = []
+        self.kernel_displays = {}
 
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=0, minsize=220)
@@ -92,7 +92,7 @@ class MainView(tk.Tk):
         ttk.Button(file_frame, text="Salvar Imagem Resultante", command=self.save_result_image).pack(fill="x", pady=(2, 0))
         
         sections = {
-            "Filtros": ["Média", "Mediana", "Detecção de Bordas", "Passa Alta Básico", "Robert's", "Prewitt", "Hight-boost", "Sobel", "Robert's Cruzado"],
+            "Filtros": ["Média", "Mediana", "Detecção de Bordas", "Passa Alta Básico", "Robert's", "Robert's Cruzado", "Prewitt", "Hight-boost", "Sobel"],
             "Operações Algébricas": ["Soma", "Subtração", "Multiplicação", "Divisão"],
             "Operações Lógicas": ["OR", "AND", "XOR"],
             "Morfismo": ["Iniciar Morfismo"],
@@ -132,29 +132,54 @@ class MainView(tk.Tk):
         self.canvas_result.grid(row=1, column=3, sticky="nsew", padx=(5, 0))
 
     def _create_kernel_display(self, parent):
-        kernel_frame = ttk.LabelFrame(parent, text="Kernel", padding=(10, 5))
-        self.kernel_labels = []
-        for i in range(3):
-            row_labels = []
-            kernel_frame.grid_rowconfigure(i, weight=1)
-            kernel_frame.grid_columnconfigure(i, weight=1)
-            for j in range(3):
-                label = ttk.Label(kernel_frame, text="", font=("Courier", 16, "bold"), anchor="center")
-                label.configure(background=FRAME_BG, foreground=FG_COLOR)
-                label.grid(row=i, column=j, sticky="nsew", padx=3, pady=3)
-                row_labels.append(label)
-            self.kernel_labels.append(row_labels)
-        return kernel_frame
+        container_frame = ttk.Frame(parent, style="TFrame")
+        
+        def create_single_kernel_panel(title, key):
+            frame = ttk.LabelFrame(container_frame, text=title, padding=(10, 5))
+            labels = []
+            for i in range(3):
+                row_labels = []
+                frame.grid_rowconfigure(i, weight=1)
+                frame.grid_columnconfigure(i, weight=1)
+                for j in range(3):
+                    label = ttk.Label(frame, text="", font=("Courier", 16, "bold"), anchor="center")
+                    label.configure(background=FRAME_BG, foreground=FG_COLOR)
+                    label.grid(row=i, column=j, sticky="nsew", padx=3, pady=3)
+                    row_labels.append(label)
+                labels.append(row_labels)
+            self.kernel_displays[key] = {'frame': frame, 'labels': labels}
+            return frame
 
-    def update_kernel_display(self, matrix):
-        for i in range(3):
-            for j in range(3):
-                if matrix and len(matrix) == 3 and len(matrix[i]) == 3:
-                    value = matrix[i][j]
-                    text = f"{value:.2f}" if isinstance(value, float) else str(value)
-                    self.kernel_labels[i][j].config(text=text)
-                else:
-                    self.kernel_labels[i][j].config(text="")
+        create_single_kernel_panel("Kernel", 'gx').pack(side="top", fill="x")
+        create_single_kernel_panel("Kernel Gy", 'gy').pack(side="top", fill="x", pady=(10, 0))
+
+        self.kernel_displays['gy']['frame'].pack_forget()
+        return container_frame
+
+    def update_kernel_display(self, gx_matrix, gy_matrix=None):
+        def update_panel(key, matrix):
+            panel = self.kernel_displays.get(key)
+            if not panel: return
+            labels = panel['labels']
+            for i in range(3):
+                for j in range(3):
+                    if matrix and len(matrix) == 3 and len(matrix[i]) == 3:
+                        value = matrix[i][j]
+                        text = f"{value:.2f}" if isinstance(value, float) else str(value)
+                        labels[i][j].config(text=text)
+                    else:
+                        labels[i][j].config(text="")
+        
+        update_panel('gx', gx_matrix)
+        
+        gy_panel = self.kernel_displays['gy']['frame']
+        if gy_matrix:
+            update_panel('gy', gy_matrix)
+            gy_panel.pack(side="top", fill="x", pady=(10, 0))
+            self.kernel_displays['gx']['frame'].config(text="Kernel Gx")
+        else:
+            gy_panel.pack_forget()
+            self.kernel_displays['gx']['frame'].config(text="Kernel")
 
     def load_image(self, image_number):
         filepath = filedialog.askopenfilename(title=f"Selecione a Imagem {image_number}", filetypes=[("PGM files", "*.pgm"), ("All files", "*.*")])
@@ -189,18 +214,18 @@ class MainView(tk.Tk):
         print(f"--- EXECUTANDO: {operation_name} ---")
 
         kernels = {
-            "Média": [[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]],
-            "Detecção de Bordas": [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]],
-            "Passa Alta Básico": [[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]],
-            "Robert's": [[0, 0, 0], [0, 1, 0], [0, 0, -1]],
-            "Robert's Cruzado": [[0, 0, 0], [0, 0, 1], [0, -1, 0]],
-            "Prewitt": [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], 
-            "Sobel": [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
-            "Hight-boost": [[-1, -1, -1], [-1, 8.9, -1], [-1, -1, -1]],
+            "Média": ([[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]], None),
+            "Detecção de Bordas": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
+            "Passa Alta Básico": ([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]], None),
+            "Robert's": ([[0,0,0],[0,1,0],[0,-1,0]], [[0,0,0],[0,1,-1],[0,0,0]]),
+            "Robert's Cruzado": ([[0,0,0],[0,1,0],[0,0,-1]], [[0,0,0],[0,0,1],[0,-1,0]]),
+            "Prewitt": ([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]), 
+            "Sobel": ([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]),
+            "Hight-boost": ([[-1, -1, -1], [-1, 8.9, -1], [-1, -1, -1]], None),
         }
         
-        kernel_to_display = kernels.get(operation_name)
-        self.update_kernel_display(kernel_to_display)
+        kernel_gx, kernel_gy = kernels.get(operation_name, (None, None))
+        self.update_kernel_display(kernel_gx, kernel_gy)
         
         pixel_matrix, width, height, max_val = self.image_data_1
         result_matrix = None
@@ -213,7 +238,11 @@ class MainView(tk.Tk):
             result_matrix = filters.apply_edge_detection_filter(pixel_matrix)
         elif operation_name == "Passa Alta Básico":
             result_matrix = filters.apply_high_pass_basic_filter(pixel_matrix)
-        
+        elif operation_name == "Robert's":
+            result_matrix = filters.apply_roberts_filter(pixel_matrix)
+        elif operation_name == "Robert's Cruzado":
+            result_matrix = filters.apply_roberts_cross_filter(pixel_matrix)
+
         if result_matrix:
             self.result_image_data = (result_matrix, width, height, max_val)
             draw_image(self.canvas_result, result_matrix)
