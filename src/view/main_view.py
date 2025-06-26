@@ -321,13 +321,22 @@ class MainView(tk.Tk):
             "Média": ([[1/9, 1/9, 1/9], [1/9, 1/9, 1/9], [1/9, 1/9, 1/9]], None),
             "Detecção de Bordas": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
             "Passa Alta Básico": ([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]], None),
-            "Robert's": ([[0,0,0],[0,1,0],[0,-1,0]], [[0,0,0],[0,1,-1],[0,0,0]]),
-            "Robert's Cruzado": ([[0,0,0],[0,1,0],[0,0,-1]], [[0,0,0],[0,0,1],[0,-1,0]]),
+            "Robert's": ([[0, 0, 0], [0, 1, 0], [0, -1, 0]], [[0, 0, 0], [0, 1, -1], [0, 0, 0]]),
+            "Robert's Cruzado": ([[0, 0, 0], [0, 1, 0], [0, 0, -1]], [[0, 0, 0], [0, 0, 1], [0, -1, 0]]),
             "Prewitt": ([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], [[-1, -1, -1], [0, 0, 0], [1, 1, 1]]), 
             "Sobel": ([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], [[-1, -2, -1], [0, 0, 0], [1, 2, 1]]),
             "Hight-boost": ([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], None),
+            "Hit-or-Miss": (
+                [[0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]],  # kernel J (forma)
+
+                [[1, 0, 1],
+                [0, 0, 0],
+                [1, 0, 1]]   # kernel K (fundo)
+            )
         }
-        
+
         structuring_element = {
             "Dilatação": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Erosão": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
@@ -338,14 +347,27 @@ class MainView(tk.Tk):
             "Gradiente Morfológico": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Top-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
             "Bottom-Hat": [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            "Hit-or-Miss": (
+                [[0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]],  # kernel J
+
+                [[1, 0, 1],
+                [0, 0, 0],
+                [1, 0, 1]]   # kernel K
+            )
         }
 
+        # Lógica de exibição
         if operation_name in kernels:
             kernel_gx, kernel_gy = kernels.get(operation_name)
             self.update_kernel_display(kernel_gx, kernel_gy, main_title="Kernel")
         elif operation_name in structuring_element:
             element = structuring_element.get(operation_name)
-            self.update_kernel_display(element, None, main_title="Elem. Estruturante")
+            if isinstance(element, tuple):
+                self.update_kernel_display(element[0], element[1], main_title="Elem. Estruturante")
+            else:
+                self.update_kernel_display(element, None, main_title="Elem. Estruturante")
         else:
             self.update_kernel_display(None, None)
         
@@ -367,6 +389,7 @@ class MainView(tk.Tk):
             "Dilatação": lambda: morphological.apply_dilation(pixel_matrix),
             "Erosão": lambda: morphological.apply_erosion(pixel_matrix),
             "Abertura": lambda: morphological.apply_opening(pixel_matrix),
+            "Hit-or-Miss": lambda: morphological.apply_hit_or_miss(pixel_matrix, structuring_element["Hit-or-Miss"][0], structuring_element["Hit-or-Miss"][1]),
             "Fechamento": lambda: morphological.apply_closing(pixel_matrix),
             "Borda Interna": lambda: morphological.apply_internal_border(pixel_matrix),
             "Borda Externa": lambda: morphological.apply_external_border(pixel_matrix),
