@@ -5,43 +5,25 @@ import tkinter as tk
 def read_pgm(filepath):
     """
     Lê um arquivo de imagem no formato PGM (P2) e retorna seus dados.
-
-    Args:
-        filepath (str): O caminho para o arquivo PGM.
-
-    Returns:
-        tuple: Uma tupla contendo (matriz_de_pixels, largura, altura, valor_maximo)
-               ou None se o arquivo for inválido ou não encontrado.
     """
     try:
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        # Ignora linhas de comentário
         lines = [line for line in lines if not line.strip().startswith('#')]
         
-        # Verifica o "número mágico" (deve ser P2)
         if lines[0].strip() != 'P2':
             print("Erro: Formato de arquivo não suportado. Apenas PGM (P2) é aceito.")
             return None
         
-        # Lê largura e altura
         width, height = map(int, lines[1].strip().split())
-        
-        # Lê o valor máximo de cinza
         max_val = int(lines[2].strip())
         
-        # Lê os dados dos pixels
         pixel_data_flat = []
         for line in lines[3:]:
             pixel_data_flat.extend(map(int, line.strip().split()))
             
-        # Constrói a matriz 2D de pixels
-        pixel_matrix = []
-        for i in range(height):
-            start = i * width
-            end = start + width
-            pixel_matrix.append(pixel_data_flat[start:end])
+        pixel_matrix = [pixel_data_flat[i*width:(i+1)*width] for i in range(height)]
             
         return (pixel_matrix, width, height, max_val)
 
@@ -54,37 +36,70 @@ def read_pgm(filepath):
 
 def draw_image(canvas, pixel_matrix):
     """
-    Desenha uma matriz de pixels em um canvas do Tkinter.
-
-    Args:
-        canvas (tk.Canvas): O widget do canvas onde a imagem será desenhada.
-        pixel_matrix (list): Uma lista de listas representando os pixels da imagem.
+    Desenha uma matriz de pixels em um canvas, redimensionando-a para caber
+    no espaço disponível, mantendo a proporção e alinhando ao topo.
     """
-    if not pixel_matrix:
+    if not pixel_matrix or not pixel_matrix[0]:
+        canvas.delete("all")
         return
         
-    height = len(pixel_matrix)
-    width = len(pixel_matrix[0])
-    
-    # Limpa o canvas antes de desenhar
     canvas.delete("all")
-
-    # Cria um objeto PhotoImage. Esta é a maneira mais eficiente de desenhar pixel a pixel.
-    photo_image = tk.PhotoImage(width=width, height=height)
+    canvas.update_idletasks()
     
-    # Monta a string de dados da imagem no formato que o PhotoImage entende.
-    # Cada pixel é um grupo de cores. Ex: "{#RRGGBB #RRGGBB ...}"
-    # O f-string '{p:02x}' formata um número para hexadecimal com 2 dígitos.
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+
+    if canvas_width <= 1 or canvas_height <= 1:
+        return
+
+    image_height = len(pixel_matrix)
+    image_width = len(pixel_matrix[0])
+
+    img_aspect = image_width / image_height
+    canvas_aspect = canvas_width / canvas_height
+
+    if img_aspect > canvas_aspect:
+        new_width = canvas_width
+        new_height = int(new_width / img_aspect)
+    else:
+        new_height = canvas_height
+        new_width = int(new_height * img_aspect)
+
+    if new_width == 0 or new_height == 0: return
+
+    scaled_pixel_matrix = [[0] * new_width for _ in range(new_height)]
+    x_ratio = image_width / new_width
+    y_ratio = image_height / new_height
+
+    for y in range(new_height):
+        for x in range(new_width):
+            px = int(x * x_ratio)
+            py = int(y * y_ratio)
+            scaled_pixel_matrix[y][x] = pixel_matrix[py][px]
+
+    photo_image = tk.PhotoImage(width=new_width, height=new_height)
+    
     image_data_string = " ".join(
         "{" + " ".join(f"#{p:02x}{p:02x}{p:02x}" for p in row) + "}" 
-        for row in pixel_matrix
+        for row in scaled_pixel_matrix
     )
     
     photo_image.put(image_data_string)
 
-    # Coloca a imagem no canvas
-    canvas.create_image(0, 0, anchor=tk.NW, image=photo_image)
+    x_offset = (canvas_width - new_width) // 2
+    y_offset = 0 # Alinha a imagem no topo
+
+    canvas.create_image(x_offset, y_offset, anchor=tk.NW, image=photo_image)
     
-    # IMPORTANTE: Mantém uma referência à imagem para evitar que ela seja
-    # coletada pelo garbage collector do Python, o que a faria desaparecer.
+    # Armazena informações de escala e posição no próprio canvas
+    # para serem usadas pelo evento de movimento do mouse.
+    canvas.scaling_info = {
+        'x_ratio': x_ratio,
+        'y_ratio': y_ratio,
+        'x_offset': x_offset,
+        'y_offset': y_offset,
+        'new_width': new_width,
+        'new_height': new_height
+    }
+    
     canvas.image = photo_image

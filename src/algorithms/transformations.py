@@ -1,29 +1,29 @@
 # src/algorithms/transformations.py
 
-def aplicar_negativo(dados_imagem):
+def apply_negative(pixel_matrix):
     """
-    Esta função receberá os dados de uma imagem (ex: uma lista de listas de pixels)
-    e deverá retornar os novos dados da imagem com o filtro negativo aplicado.
-    
-    A lógica S=255-r será implementada aqui.
-    """
-    print(">>> LÓGICA: Aplicando filtro negativo...")
-    # Exemplo de lógica (será substituída pelos seus cálculos reais):
-    # novos_dados = []
-    # for linha in dados_imagem:
-    #     nova_linha = []
-    #     for pixel in linha:
-    #         novo_pixel = 255 - pixel
-    #         nova_linha.append(novo_pixel)
-    #     novos_dados.append(nova_linha)
-    # return novos_dados
-    
-    # Por enquanto, apenas imprimimos uma mensagem.
-    return None
+    Calcula o negativo de uma imagem.
+    Aplica a fórmula S = 255 - r para cada pixel.
 
-def aplicar_gamma(dados_imagem, gamma):
+    Args:
+        pixel_matrix (list[list[int]]): A matriz 2D da imagem.
+
+    Returns:
+        list[list[int]]: A nova matriz de pixels com a transformação negativa.
     """
-    Aplica a transformação gamma. A lógica S = c*r^gamma será implementada aqui.
-    """
-    print(f">>> LÓGICA: Aplicando Gamma com valor {gamma}...")
-    return None
+    if not pixel_matrix:
+        return None
+
+    height = len(pixel_matrix)
+    width = len(pixel_matrix[0])
+    
+    # Cria uma nova matriz para armazenar o resultado
+    output_matrix = [[0 for _ in range(width)] for _ in range(height)]
+
+    for y in range(height):
+        for x in range(width):
+            original_pixel = pixel_matrix[y][x]
+            # Aplica a fórmula do negativo
+            output_matrix[y][x] = 255 - original_pixel
+            
+    return output_matrix
